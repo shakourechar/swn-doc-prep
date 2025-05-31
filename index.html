@@ -196,6 +196,8 @@
       <button id="openCameraBtn">Open Camera</button>
       <button id="uploadBtn">Upload File</button>
       <button id="penToolBtn">Pen Tool</button>
+      <button id="undoBtn" disabled>Undo</button>
+      <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
       <input type="file" id="fileInput" accept="image/*,application/pdf" />
     </div>
@@ -228,6 +230,8 @@
     const openCameraBtn = document.getElementById('openCameraBtn');
     const uploadBtn = document.getElementById('uploadBtn');
     const penToolBtn = document.getElementById('penToolBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const resetBtn = document.getElementById('resetBtn');
     const saveBtn = document.getElementById('saveBtn');
     const fileInput = document.getElementById('fileInput');
     const video = document.getElementById('video');
@@ -247,8 +251,11 @@
     let pdfDoc = null;
     let pdfPageNum = 1;
     let scale = 1.0;
-    let lastX = 0, lastY = 0;
     let loadedImage = new Image();
+
+    // Pen strokes stored as array of paths (each path is array of points)
+    let penStrokes = [];
+    let currentStroke = [];
 
     // ====== Resize canvas ======
     function resizeCanvas() {
@@ -273,6 +280,7 @@
         overlayControls.style.display = 'flex';
         currentMode = 'camera';
         resizeCanvas();
+        disableActionButtons(); 
       } catch (err) {
         alert('Unable to access camera: ' + err.message);
       }
@@ -286,7 +294,7 @@
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
         drawImageOnCanvas(loadedImage);
-        saveBtn.disabled = false;
+        enableActionButtons();
       };
     });
     stopCameraBtn.addEventListener('click', stopCamera);
@@ -310,7 +318,6 @@
         currentMode = 'pdf';
         const arrayBuffer = await file.arrayBuffer();
         await loadAndRenderPdf(arrayBuffer);
-        saveBtn.disabled = false;
       } else if (fileType.startsWith('image/')) {
         currentMode = 'image';
         const url = URL.createObjectURL(file);
@@ -318,7 +325,7 @@
         loadedImage.src = url;
         loadedImage.onload = () => {
           drawImageOnCanvas(loadedImage);
-          saveBtn.disabled = false;
+          enableActionButtons();
         };
       } else {
         alert('Unsupported file type.');
@@ -335,8 +342,8 @@
     function renderPdfPage(num) {
       pdfDoc.getPage(num).then((page) => {
         const rect = canvas.parentElement.getBoundingClientRect();
-        const vp = page.getViewport({ scale: 1 });
-        const ratio = Math.min(rect.width / vp.width, rect.height / vp.height);
+        const vpOriginal = page.getViewport({ scale: 1 });
+        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
         const viewport = page.getViewport({ scale: ratio });
         scale = viewport.scale;
         canvas.width = viewport.width;
@@ -347,6 +354,7 @@
         };
         page.render(renderContext).promise.then(() => {
           redrawPenStrokes();
+          enableActionButtons();
         });
       });
     }
@@ -355,18 +363,31 @@
     function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       penStrokes = [];
+      currentStroke = [];
+      redrawBase();
+      disableUndoReset();
     }
+
     function drawImageOnCanvas(img) {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
       ctx.drawImage(img, 0, 0, rect.width, rect.height);
       redrawPenStrokes();
+      enableActionButtons();
     }
 
-    // Pen strokes stored as array of paths (each path is array of points)
-    let penStrokes = [];
-    let currentStroke = [];
+    // Redraw base content (image or current PDF page) without pen strokes
+    function redrawBase() {
+      if (currentMode === 'image' && loadedImage.src) {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        ctx.drawImage(loadedImage, 0, 0, rect.width, rect.height);
+      } else if (currentMode === 'pdf' && pdfDoc) {
+        renderPdfPage(pdfPageNum);
+      }
+    }
 
     function redrawPenStrokes() {
       penStrokes.forEach((stroke) => {
@@ -384,6 +405,7 @@
         ctx.stroke();
         ctx.restore();
       });
+      updateUndoResetState();
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -401,7 +423,6 @@
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       currentStroke.push({ x, y });
-      // Draw the latest segment
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#000';
@@ -422,11 +443,15 @@
       if (!isDrawing || !isPenActive) return;
       isDrawing = false;
       penStrokes.push(currentStroke);
+      currentStroke = [];
+      updateUndoResetState();
     });
     canvas.addEventListener('mouseleave', () => {
       if (isDrawing && isPenActive) {
         isDrawing = false;
         penStrokes.push(currentStroke);
+        currentStroke = [];
+        updateUndoResetState();
       }
     });
 
@@ -436,7 +461,36 @@
       penToolBtn.style.background = isPenActive 
         ? 'linear-gradient(145deg, rgba(200,0,0,0.4), rgba(200,0,0,0.2))'
         : 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0))';
+      if (!isPenActive) {
+        isDrawing = false;
+      }
     });
+
+    // ====== Undo & Reset ======
+    undoBtn.addEventListener('click', () => {
+      if (penStrokes.length === 0) return;
+      penStrokes.pop();
+      redrawBase();
+      redrawPenStrokes();
+    });
+    resetBtn.addEventListener('click', () => {
+      clearCanvas();
+    });
+    function updateUndoResetState() {
+      undoBtn.disabled = penStrokes.length === 0;
+      resetBtn.disabled = penStrokes.length === 0;
+    }
+    function enableActionButtons() {
+      saveBtn.disabled = false;
+      penToolBtn.disabled = false;
+      updateUndoResetState();
+    }
+    function disableActionButtons() {
+      saveBtn.disabled = true;
+      penToolBtn.disabled = true;
+      undoBtn.disabled = true;
+      resetBtn.disabled = true;
+    }
 
     // ====== Save Redacted File ======
     saveBtn.addEventListener('click', async () => {
@@ -475,35 +529,8 @@
     // ====== Initialization ======
     window.addEventListener('load', () => {
       resizeCanvas();
-      saveBtn.disabled = true;
+      disableActionButtons();
     });
-
-    // ====== After each render or load, allow saving and pen usage ======
-    function enableActions() {
-      saveBtn.disabled = false;
-      penToolBtn.disabled = false;
-    }
-    // Modify points where rendering finishes
-    loadedImage.onload = () => { resizeCanvas(); enableActions(); };
-    function renderPdfPage(num) {
-      pdfDoc.getPage(num).then((page) => {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        const vpOriginal = page.getViewport({ scale: 1 });
-        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
-        const viewport = page.getViewport({ scale: ratio });
-        scale = viewport.scale;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport
-        };
-        page.render(renderContext).promise.then(() => {
-          redrawPenStrokes();
-          enableActions();
-        });
-      });
-    }
   </script>
 </body>
 </html>
