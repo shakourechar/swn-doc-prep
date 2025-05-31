@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <title>Redact Tool</title>
-  <!-- External Libraries -->
+  <!-- PDF.js for PDF rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
+  <!-- jsPDF for exporting PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-    /* ----- Global Reset & Body ----- */
+    /* ===== Global Reset & Body ===== */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -25,7 +26,8 @@
       align-items: center;
       justify-content: center;
     }
-    /* ----- Fullscreen Glassmorphic Container ----- */
+
+    /* ===== Fullscreen Glassmorphic Container ===== */
     .glass-container {
       position: relative;
       width: 100vw;
@@ -66,6 +68,8 @@
       background: rgba(255, 255, 255, 0.25);
       transform: translateY(-2px);
     }
+
+    /* ===== Controls Row ===== */
     .controls {
       padding: 16px;
       display: flex;
@@ -88,7 +92,8 @@
       background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
       transform: translateY(-2px);
     }
-    /* ----- Main Canvas Area ----- */
+
+    /* ===== Main Canvas Area ===== */
     .canvas-area {
       flex: 1;
       position: relative;
@@ -102,8 +107,10 @@
       max-height: 100%;
       object-fit: contain;
       border-radius: 4px;
+      display: block;
     }
-    /* ----- Controls Overlay (for camera) ----- */
+
+    /* ===== Overlay Controls (Camera) ===== */
     .overlay-controls {
       position: absolute;
       bottom: 20px;
@@ -127,11 +134,13 @@
       background: rgba(255, 255, 255, 0.2);
       transform: translateY(-1px);
     }
-    /* ----- Hidden File Input ----- */
+
+    /* ===== Hidden File Input ===== */
     #fileInput {
       display: none;
     }
-    /* ----- Modal Styles ----- */
+
+    /* ===== Modal Styles ===== */
     .modal-backdrop {
       position: fixed;
       top: 0;
@@ -202,11 +211,8 @@
       <input type="file" id="fileInput" accept="image/*,application/pdf" />
     </div>
     <div class="canvas-area" id="canvasArea">
-      <!-- Video for camera preview -->
       <video id="video" autoplay muted playsinline style="display:none; border-radius:4px;"></video>
-      <!-- Canvas for rendering image/PDF and pen redactions -->
       <canvas id="canvas"></canvas>
-      <!-- Overlay controls (e.g., Capture button) -->
       <div class="overlay-controls" id="overlayControls" style="display:none;">
         <button id="captureBtn">Capture</button>
         <button id="stopCameraBtn">Close Camera</button>
@@ -226,7 +232,7 @@
   </div>
 
   <script>
-    // ====== Global Variables ======
+    // ===== Global Variables =====
     const openCameraBtn = document.getElementById('openCameraBtn');
     const uploadBtn = document.getElementById('uploadBtn');
     const penToolBtn = document.getElementById('penToolBtn');
@@ -250,14 +256,13 @@
     let isDrawing = false;
     let pdfDoc = null;
     let pdfPageNum = 1;
-    let scale = 1.0;
     let loadedImage = new Image();
 
-    // Pen strokes stored as array of paths (each path is array of points)
+    // Pen strokes: array of paths (each path is array of points)
     let penStrokes = [];
     let currentStroke = [];
 
-    // ====== Resize canvas ======
+    // ===== Utility: Resize canvas & redraw existing content =====
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
@@ -265,12 +270,13 @@
       if (currentMode === 'image' && loadedImage.src) {
         drawImageOnCanvas(loadedImage);
       } else if (currentMode === 'pdf' && pdfDoc) {
+        // Re-render PDF page at new size
         renderPdfPage(pdfPageNum);
       }
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // ====== Camera Handlers ======
+    // ===== Camera Handlers =====
     openCameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
@@ -280,7 +286,7 @@
         overlayControls.style.display = 'flex';
         currentMode = 'camera';
         resizeCanvas();
-        disableActionButtons(); 
+        disableActionButtons();
       } catch (err) {
         alert('Unable to access camera: ' + err.message);
       }
@@ -307,11 +313,12 @@
       }
     }
 
-    // ====== Upload Handlers ======
+    // ===== Upload Handlers =====
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      console.log('Selected file:', file);
       const fileType = file.type;
       clearCanvas();
       if (fileType === 'application/pdf') {
@@ -328,26 +335,31 @@
           enableActionButtons();
         };
       } else {
-        alert('Unsupported file type.');
+        alert('Unsupported file type. Please upload a PDF or image.');
       }
       fileInput.value = '';
     });
 
-    // ====== PDF Rendering ======
+    // ===== PDF Rendering with PDF.js =====
     async function loadAndRenderPdf(data) {
-      pdfDoc = await pdfjsLib.getDocument({ data }).promise;
-      pdfPageNum = 1;
-      renderPdfPage(pdfPageNum);
+      try {
+        pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+        pdfPageNum = 1;
+        renderPdfPage(pdfPageNum);
+      } catch (err) {
+        console.error('PDF load error:', err);
+        alert('Failed to load PDF.');
+      }
     }
     function renderPdfPage(num) {
       pdfDoc.getPage(num).then((page) => {
         const rect = canvas.parentElement.getBoundingClientRect();
-        const vpOriginal = page.getViewport({ scale: 1 });
-        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
+        const vpOrig = page.getViewport({ scale: 1 });
+        const ratio = Math.min(rect.width / vpOrig.width, rect.height / vpOrig.height);
         const viewport = page.getViewport({ scale: ratio });
-        scale = viewport.scale;
         canvas.width = viewport.width;
         canvas.height = viewport.height;
+
         const renderContext = {
           canvasContext: ctx,
           viewport: viewport
@@ -356,10 +368,12 @@
           redrawPenStrokes();
           enableActionButtons();
         });
+      }).catch((err) => {
+        console.error('PDF render error:', err);
       });
     }
 
-    // ====== Drawing and Pen Redaction ======
+    // ===== Drawing & Pen Redaction =====
     function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       penStrokes = [];
@@ -367,7 +381,6 @@
       redrawBase();
       disableUndoReset();
     }
-
     function drawImageOnCanvas(img) {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
@@ -376,8 +389,6 @@
       redrawPenStrokes();
       enableActionButtons();
     }
-
-    // Redraw base content (image or current PDF page) without pen strokes
     function redrawBase() {
       if (currentMode === 'image' && loadedImage.src) {
         const rect = canvas.parentElement.getBoundingClientRect();
@@ -388,7 +399,6 @@
         renderPdfPage(pdfPageNum);
       }
     }
-
     function redrawPenStrokes() {
       penStrokes.forEach((stroke) => {
         ctx.save();
@@ -466,7 +476,7 @@
       }
     });
 
-    // ====== Undo & Reset ======
+    // ===== Undo & Reset =====
     undoBtn.addEventListener('click', () => {
       if (penStrokes.length === 0) return;
       penStrokes.pop();
@@ -492,7 +502,7 @@
       resetBtn.disabled = true;
     }
 
-    // ====== Save Redacted File ======
+    // ===== Save Redacted File =====
     saveBtn.addEventListener('click', async () => {
       if (currentMode === 'image' || currentMode === 'camera') {
         const link = document.createElement('a');
@@ -500,7 +510,6 @@
         link.download = 'redacted.png';
         link.click();
       } else if (currentMode === 'pdf') {
-        // Create new PDF with flattened redactions
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'l' : 'p',
@@ -513,7 +522,7 @@
       }
     });
 
-    // ====== Privacy Modal Handlers ======
+    // ===== Privacy Modal Handlers =====
     privacyBtn.addEventListener('click', () => {
       modalBackdrop.style.display = 'flex';
     });
@@ -526,7 +535,7 @@
       }
     });
 
-    // ====== Initialization ======
+    // ===== Initialization =====
     window.addEventListener('load', () => {
       resizeCanvas();
       disableActionButtons();
