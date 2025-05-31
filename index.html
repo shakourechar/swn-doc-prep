@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Mobile scaling + notch safe‐area -->
+  <!-- Enable responsive scaling on mobile -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Redact Tool</title>
 
-  <!-- PDF.js for PDF preview -->
+  <!-- PDF.js (for PDF preview) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
-  <!-- jsPDF for saving as PDF -->
+  <!-- jsPDF (for saving as PDF) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
@@ -28,8 +28,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Prevent overscroll on mobile */
-      overscroll-behavior: none;
+      overscroll-behavior: none; /* disable pull-to-refresh/overscroll */
     }
 
     /* ===== Glassmorphic Container ===== */
@@ -113,20 +112,20 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      /* Prevent parent scroll when touching canvas */
-      touch-action: none;
+      touch-action: none; /* prevent default gestures on children */
     }
-    /* Video fills the entire area */
+    /* Video sits below the canvas */
     video {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: cover; 
       border-radius: 4px;
+      z-index: 1;
     }
-    /* Canvas overlaid for drawing */
+    /* Canvas is on top and interactive */
     canvas {
       position: absolute;
       top: 0;
@@ -135,7 +134,12 @@
       height: 100%;
       object-fit: contain;
       border-radius: 4px;
-      touch-action: none; /* disable browser default gestures */
+      z-index: 2;
+      pointer-events: auto; /* ensure it catches taps/drags */
+    }
+    /* Add a visual cue when pen is active */
+    canvas.pen-active {
+      cursor: crosshair;
     }
 
     /* ===== Overlay Controls (Camera) ===== */
@@ -146,7 +150,7 @@
       transform: translateX(-50%);
       display: flex;
       gap: 8px;
-      z-index: 10;
+      z-index: 3; /* above canvas */
     }
     .overlay-controls button {
       padding: 6px 10px;
@@ -236,6 +240,7 @@
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
+      <!-- rear camera via capture="environment" when using file input -->
       <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" />
     </div>
     <div class="canvas-area" id="canvasArea">
@@ -307,7 +312,7 @@
     openCameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
-        // Request exact rear camera
+        // Request exact rear camera first
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { exact: 'environment' } }
         });
@@ -317,7 +322,7 @@
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
           });
-        } catch (err2) {
+        } catch {
           stream = null;
         }
       }
@@ -332,18 +337,25 @@
       } else {
         alert(
           'Unable to access rear camera.\n' +
-          '• Make sure you’re on HTTPS (not file:// or HTTP).\n' +
-          '• If in an iframe, include allow="camera" on the iframe.\n' +
-          '• Close any overlays that block the permission prompt.'
+          '• Ensure you’re on HTTPS (not file:// or HTTP).\n' +
+          '• If embedded in an iframe, include allow="camera" on the iframe.\n' +
+          '• Close any overlays or “chat bubbles” blocking the prompt.'
         );
       }
     });
     captureBtn.addEventListener('click', () => {
       if (!stream) return;
+      // Draw current video frame to canvas
       const rect = canvas.getBoundingClientRect();
       ctx.drawImage(video, 0, 0, rect.width, rect.height);
+
+      // Immediately stop & hide video (prevent interference)
       stopCamera();
+      video.style.display = 'none';
+      video.srcObject = null;
+
       currentMode = 'image';
+      // Store data URL and wait for image to finish loading onto canvas
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
         drawImageOnCanvas(loadedImage);
@@ -467,7 +479,7 @@
       updateUndoResetState();
     }
 
-    // --- Mouse event handlers (existing) ---
+    // --- Mouse event handlers ---
     canvas.addEventListener('mousedown', (e) => {
       if (!['image', 'pdf'].includes(currentMode) || !isPenActive) return;
       isDrawing = true;
@@ -517,7 +529,7 @@
       }
     });
 
-    // --- Touch event handlers (new) ---
+    // --- Touch event handlers ---
     canvas.addEventListener('touchstart', (e) => {
       if (!['image', 'pdf'].includes(currentMode) || !isPenActive) return;
       const touch = e.touches[0];
@@ -565,11 +577,12 @@
 
     penToolBtn.addEventListener('click', () => {
       isPenActive = !isPenActive;
-      penToolBtn.textContent = isPenActive ? 'Pen Active (Click to Disable)' : 'Pen Tool';
-      penToolBtn.style.background = isPenActive 
-        ? 'linear-gradient(145deg, rgba(200,0,0,0.4), rgba(200,0,0,0.2))'
-        : 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0))';
-      if (!isPenActive) {
+      if (isPenActive) {
+        penToolBtn.textContent = 'Pen Active (Click to Disable)';
+        canvas.classList.add('pen-active');
+      } else {
+        penToolBtn.textContent = 'Pen Tool';
+        canvas.classList.remove('pen-active');
         isDrawing = false;
       }
     });
