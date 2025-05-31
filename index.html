@@ -165,39 +165,39 @@
 
   <script>
     // ===== Global Variables =====
-    const cameraBtn = document.getElementById('cameraBtn');
-    const uploadBtn  = document.getElementById('uploadBtn');
-    const penToolBtn = document.getElementById('penToolBtn');
-    const penPlusBtn = document.getElementById('penPlusBtn');
-    const penMinusBtn= document.getElementById('penMinusBtn');
-    const undoBtn    = document.getElementById('undoBtn');
-    const resetBtn   = document.getElementById('resetBtn');
-    const saveBtn    = document.getElementById('saveBtn');
-    const fileInput  = document.getElementById('fileInput');
-    const video      = document.getElementById('video');
-    const canvas     = document.getElementById('canvas');
-    let ctx          = canvas.getContext('2d');
+    const cameraBtn   = document.getElementById('cameraBtn');
+    const uploadBtn   = document.getElementById('uploadBtn');
+    const penToolBtn  = document.getElementById('penToolBtn');
+    const penPlusBtn  = document.getElementById('penPlusBtn');
+    const penMinusBtn = document.getElementById('penMinusBtn');
+    const undoBtn     = document.getElementById('undoBtn');
+    const resetBtn    = document.getElementById('resetBtn');
+    const saveBtn     = document.getElementById('saveBtn');
+    const fileInput   = document.getElementById('fileInput');
+    const video       = document.getElementById('video');
+    const canvas      = document.getElementById('canvas');
+    let ctx           = canvas.getContext('2d');
     const overlayControls = document.getElementById('overlayControls');
-    const captureBtn     = document.getElementById('captureBtn');
-    const stopCameraBtn  = document.getElementById('stopCameraBtn');
+    const captureBtn      = document.getElementById('captureBtn');
+    const stopCameraBtn   = document.getElementById('stopCameraBtn');
 
     let stream = null;
     let currentMode = null; // "camera" | "image" | "pdf"
     let isPenActive = false;
-    let isDrawing = false;
-    let pdfDoc = null;
-    let pdfPageNum = 1;
-    let loadedImage = new Image();
+    let isDrawing    = false;
+    let pdfDoc       = null;
+    let pdfPageNum   = 1;
+    let loadedImage  = new Image();
 
     // Pen strokes and brush size
-    let penStrokes = [];
-    let currentStroke = [];
-    let brushSize = 20; // default smaller size
+    let penStrokes     = [];
+    let currentStroke  = [];
+    let brushSize      = 20; // default
 
     // ===== Utility: Resize Canvas =====
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width;
+      canvas.width  = rect.width;
       canvas.height = rect.height;
       if (currentMode === 'image' && loadedImage.src) {
         drawImageOnCanvas(loadedImage);
@@ -212,13 +212,22 @@
     cameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
+        // Request high‐res rear camera
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: 'environment' } }
+          video: {
+            facingMode: { exact: 'environment' },
+            width:  { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
         });
       } catch {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
+            video: {
+              facingMode: 'environment',
+              width:  { ideal: 1920 },
+              height: { ideal: 1080 }
+            }
           });
         } catch {
           stream = null;
@@ -233,20 +242,28 @@
         disableActionButtons();
       } else {
         alert(
-          'Unable to access rear camera.\n' +
+          'Unable to access the high‐res rear camera.\n' +
           '• Ensure you’re on HTTPS (not file:// or HTTP).\n' +
-          '• Close any overlays blocking the prompt.'
+          '• Close any overlays blocking the permission prompt.'
         );
       }
     });
 
     captureBtn.addEventListener('click', () => {
       if (!stream) return;
-      const rect = canvas.getBoundingClientRect();
-      ctx.drawImage(video, 0, 0, rect.width, rect.height);
+      // Use camera’s native resolution
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      // Resize canvas to full camera resolution
+      canvas.width  = vw;
+      canvas.height = vh;
+      // Draw full‐res frame
+      ctx.drawImage(video, 0, 0, vw, vh);
+      // Stop & hide video
       stopCamera();
       video.style.display = 'none';
       video.srcObject = null;
+      // Store high‐res PNG, then scale down via CSS
       currentMode = 'image';
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
@@ -306,9 +323,9 @@
       pdfDoc.getPage(num).then((page) => {
         const rect = canvas.parentElement.getBoundingClientRect();
         const vpOrig = page.getViewport({ scale: 1 });
-        const ratio = Math.min(rect.width / vpOrig.width, rect.height / vpOrig.height);
+        const ratio  = Math.min(rect.width / vpOrig.width, rect.height / vpOrig.height);
         const viewport = page.getViewport({ scale: ratio });
-        canvas.width = viewport.width;
+        canvas.width  = viewport.width;
         canvas.height = viewport.height;
 
         const renderContext = {
@@ -336,7 +353,7 @@
     }
     function drawImageOnCanvas(img) {
       const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width;
+      canvas.width  = rect.width;
       canvas.height = rect.height;
       ctx.drawImage(img, 0, 0, rect.width, rect.height);
       redrawPenStrokes();
@@ -345,7 +362,7 @@
     function redrawBase() {
       if (currentMode === 'image' && loadedImage.src) {
         const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width;
+        canvas.width  = rect.width;
         canvas.height = rect.height;
         ctx.drawImage(loadedImage, 0, 0, rect.width, rect.height);
       } else if (currentMode === 'pdf' && pdfDoc) {
@@ -429,18 +446,18 @@
 
     penToolBtn.addEventListener('click', () => {
       isPenActive = !isPenActive;
-      penToolBtn.textContent = isPenActive ? 'Pen ✎' : 'Pen';
+      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : 'Pen';
       if (!isPenActive) isDrawing = false;
     });
 
     // ===== Brush Size Controls =====
     penPlusBtn.addEventListener('click', () => {
       brushSize = Math.min(100, brushSize + 5);
-      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : `Pen`;
+      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : 'Pen';
     });
     penMinusBtn.addEventListener('click', () => {
       brushSize = Math.max(5, brushSize - 5);
-      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : `Pen`;
+      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : 'Pen';
     });
 
     // ===== Undo & Reset =====
@@ -462,19 +479,19 @@
       resetBtn.disabled = true;
     }
     function enableActionButtons() {
-      saveBtn.disabled = false;
+      saveBtn.disabled    = false;
       penToolBtn.disabled = false;
       penPlusBtn.disabled = false;
       penMinusBtn.disabled = false;
       updateUndoResetState();
     }
     function disableActionButtons() {
-      saveBtn.disabled = true;
+      saveBtn.disabled    = true;
       penToolBtn.disabled = true;
       penPlusBtn.disabled = true;
       penMinusBtn.disabled = true;
-      undoBtn.disabled = true;
-      resetBtn.disabled = true;
+      undoBtn.disabled    = true;
+      resetBtn.disabled   = true;
     }
 
     // ===== Save Redacted File =====
