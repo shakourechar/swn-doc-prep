@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Ensure proper mobile scaling -->
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Enable responsive scaling on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Redact Tool</title>
+
   <!-- PDF.js for PDF rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
   <!-- jsPDF for exporting PDF -->
@@ -42,8 +43,15 @@
       flex-direction: column;
       overflow: hidden;
     }
+
+    /* ===== Header (with safe-area support) ===== */
     .header {
-      padding: 16px 20px; /* slightly more padding on mobile */
+      /* Push content below the notch/status bar on iOS and Android */
+      padding-top: constant(safe-area-inset-top, 16px); /* iOS < 11 fallback */
+      padding-top: env(safe-area-inset-top, 16px);
+      padding-bottom: 12px;
+      padding-left: 20px;
+      padding-right: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -51,7 +59,8 @@
       background: rgba(255, 255, 255, 0.05);
     }
     .header h1 {
-      font-size: clamp(1.5rem, 5vw, 2rem); /* responsive font size */
+      /* Responsive font size */
+      font-size: clamp(1.5rem, 5vw, 2rem);
       font-weight: 600;
       color: #e0e0e0;
       text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
@@ -105,12 +114,23 @@
       align-items: center;
       justify-content: center;
     }
-    canvas, video {
-      max-width: 100%;
-      max-height: 100%;
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       border-radius: 4px;
-      display: block;
+    }
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Fill full area */
+      border-radius: 4px;
     }
 
     /* ===== Overlay Controls (Camera) ===== */
@@ -211,11 +231,11 @@
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
-      <!-- Added capture="environment" to prompt camera on mobile -->
+      <!-- On mobile, capture="environment" opens rear camera -->
       <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" />
     </div>
     <div class="canvas-area" id="canvasArea">
-      <video id="video" autoplay muted playsinline style="display:none; border-radius:4px;"></video>
+      <video id="video" autoplay muted playsinline style="display:none;"></video>
       <canvas id="canvas"></canvas>
       <div class="overlay-controls" id="overlayControls" style="display:none;">
         <button id="captureBtn">Capture</button>
@@ -283,8 +303,10 @@
     openCameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
-        // Must be served over HTTPS for getUserMedia to work
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Use environment (rear) camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }
+        });
         video.srcObject = stream;
         video.style.display = 'block';
         overlayControls.style.display = 'flex';
@@ -292,7 +314,12 @@
         resizeCanvas();
         disableActionButtons();
       } catch (err) {
-        alert('Unable to access camera: ' + err.message + '\nEnsure no other app or overlay is blocking camera permission.');
+        alert(
+          'Unable to access camera: ' + err.message +
+          '\n• Confirm you’re on HTTPS (not file:// or HTTP).\n' +
+          '• If embedded in an iframe, ensure the iframe tag includes allow="camera".\n' +
+          '• Close any screen overlays (chat bubbles, etc.) so Chrome can show its permission prompt.'
+        );
       }
     });
     captureBtn.addEventListener('click', () => {
