@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Enable responsive scaling on mobile -->
+  <!-- Mobile scaling + notch safe‐area -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Redact Tool</title>
 
-  <!-- PDF.js for PDF rendering -->
+  <!-- PDF.js (for PDF preview) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
-  <!-- jsPDF for exporting PDF -->
+  <!-- jsPDF (for saving as PDF) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-    /* ===== Global Reset & Body ===== */
+    /* ===== Global Reset ===== */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -30,7 +30,7 @@
       justify-content: center;
     }
 
-    /* ===== Fullscreen Glassmorphic Container ===== */
+    /* ===== Glassmorphic Container ===== */
     .glass-container {
       position: relative;
       width: 100vw;
@@ -44,10 +44,8 @@
       overflow: hidden;
     }
 
-    /* ===== Header (with safe-area support) ===== */
+    /* ===== Header (Safe‐area support) ===== */
     .header {
-      /* Push content below the notch/status bar on iOS and Android */
-      padding-top: constant(safe-area-inset-top, 16px); /* iOS < 11 fallback */
       padding-top: env(safe-area-inset-top, 16px);
       padding-bottom: 12px;
       padding-left: 20px;
@@ -59,7 +57,6 @@
       background: rgba(255, 255, 255, 0.05);
     }
     .header h1 {
-      /* Responsive font size */
       font-size: clamp(1.5rem, 5vw, 2rem);
       font-weight: 600;
       color: #e0e0e0;
@@ -71,8 +68,8 @@
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.15);
       color: #fff;
-      cursor: pointer;
       font-size: 0.9rem;
+      cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .header button:hover {
@@ -96,8 +93,8 @@
       border-radius: 8px;
       background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
       color: #fff;
-      cursor: pointer;
       font-size: 0.95rem;
+      cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .controls button:hover {
@@ -105,7 +102,7 @@
       transform: translateY(-2px);
     }
 
-    /* ===== Main Canvas Area ===== */
+    /* ===== Canvas Area ===== */
     .canvas-area {
       flex: 1;
       position: relative;
@@ -113,7 +110,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
+    /* Make video fill entire canvas‐area */
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* cover entire area */
+      border-radius: 4px;
+    }
+    /* Canvas sits on top when drawing */
     canvas {
       position: absolute;
       top: 0;
@@ -121,15 +130,6 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      border-radius: 4px;
-    }
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Fill full area */
       border-radius: 4px;
     }
 
@@ -149,8 +149,8 @@
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.12);
       color: #fff;
-      cursor: pointer;
       font-size: 0.85rem;
+      cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .overlay-controls button:hover {
@@ -163,7 +163,7 @@
       display: none;
     }
 
-    /* ===== Modal Styles ===== */
+    /* ===== Modal ===== */
     .modal-backdrop {
       position: fixed;
       top: 0;
@@ -231,7 +231,7 @@
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
-      <!-- On mobile, capture="environment" opens rear camera -->
+      <!-- rear camera via capture="environment" when using file input -->
       <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" />
     </div>
     <div class="canvas-area" id="canvasArea">
@@ -303,22 +303,30 @@
     openCameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
-        // Use environment (rear) camera
+        // Request rear (environment) camera explicitly
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } }
+          video: { facingMode: { exact: 'environment' } }
         });
+      } catch (err) {
+        // If 'exact' fails, fall back to 'ideal'
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+      }
+
+      if (stream) {
         video.srcObject = stream;
         video.style.display = 'block';
         overlayControls.style.display = 'flex';
         currentMode = 'camera';
         resizeCanvas();
         disableActionButtons();
-      } catch (err) {
+      } else {
         alert(
-          'Unable to access camera: ' + err.message +
-          '\n• Confirm you’re on HTTPS (not file:// or HTTP).\n' +
-          '• If embedded in an iframe, ensure the iframe tag includes allow="camera".\n' +
-          '• Close any screen overlays (chat bubbles, etc.) so Chrome can show its permission prompt.'
+          'Unable to access rear camera.\n' +
+          '• Make sure you’re on HTTPS (not file:// or HTTP).\n' +
+          '• If in an iframe, add allow="camera".\n' +
+          '• Close any overlays (chat bubbles, etc.) that block the prompt.'
         );
       }
     });
