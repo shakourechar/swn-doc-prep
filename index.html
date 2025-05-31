@@ -271,7 +271,6 @@
       if (currentMode === 'image' && loadedImage.src) {
         drawImageOnCanvas(loadedImage);
       } else if (currentMode === 'pdf' && pdfDoc) {
-        // Re-render PDF page at new size
         renderPdfPage(pdfPageNum);
       }
     }
