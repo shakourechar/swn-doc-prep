@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redact Tool</title>
+  <!-- External Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* ----- Global Reset & Body ----- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #121212;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* ----- Glassmorphic Container ----- */
+    .glass-container {
+      position: relative;
+      width: 90vw;
+      max-width: 800px;
+      height: 90vh;
+      max-height: 600px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .header {
+      padding: 16px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: #fff;
+    }
+    .header button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s ease;
+    }
+    .header button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .controls {
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .controls button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+    }
+    .controls button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    /* ----- Main Canvas Area ----- */
+    .canvas-area {
+      flex: 1;
+      position: relative;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    canvas, video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    /* ----- Controls Overlay ----- */
+    .overlay-controls {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+    .overlay-controls button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s ease;
+    }
+    .overlay-controls button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    /* ----- Hidden File Input ----- */
+    #fileInput {
+      display: none;
+    }
+    /* ----- Modal Styles ----- */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-content {
+      width: 90%;
+      max-width: 500px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 24px;
+      color: #fff;
+      position: relative;
+    }
+    .modal-content h2 {
+      margin-bottom: 12px;
+      font-size: 1.3rem;
+    }
+    .modal-content p {
+      margin-bottom: 8px;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 1rem;
+      padding: 4px 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-container">
+    <div class="header">
+      <h1>Redact & Save</h1>
+      <button id="privacyBtn">Privacy Policy</button>
+    </div>
+    <div class="controls">
+      <button id="openCameraBtn">Open Camera</button>
+      <button id="uploadBtn">Upload File</button>
+      <button id="saveBtn" disabled>Save Redacted</button>
+      <input type="file" id="fileInput" accept="image/*,application/pdf" />
+    </div>
+    <div class="canvas-area" id="canvasArea">
+      <!-- Video for camera preview -->
+      <video id="video" autoplay muted playsinline style="display:none;"></video>
+      <!-- Canvas for rendering image/PDF and drawing redactions -->
+      <canvas id="canvas"></canvas>
+      <!-- Overlay controls (e.g., Capture button) -->
+      <div class="overlay-controls" id="overlayControls" style="display:none;">
+        <button id="captureBtn">Capture</button>
+        <button id="stopCameraBtn">Close Camera</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Policy Modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-content">
+      <button class="modal-close" id="modalCloseBtn">&times;</button>
+      <h2>Privacy Policy</h2>
+      <p>This redaction tool processes images and PDF files entirely within your web browser. No data, images, or files are uploaded to any external server or stored by this application. All redaction actions occur locally on your device.</p>
+      <p>Once you click "Save Redacted," the output file (image or PDF) is generated and downloaded to your device only. We do not collect, store, or share any user data, and all intermediate data is discarded when you close the page or navigate away.</p>
+      <p>By using this tool, you acknowledge that your data remains private and is not retained by the service.</p>
+    </div>
+  </div>
+
+  <script>
+    // ====== Global Variables ======
+    const openCameraBtn = document.getElementById('openCameraBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const fileInput = document.getElementById('fileInput');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const overlayControls = document.getElementById('overlayControls');
+    const captureBtn = document.getElementById('captureBtn');
+    const stopCameraBtn = document.getElementById('stopCameraBtn');
+    const privacyBtn = document.getElementById('privacyBtn');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    let stream = null;
+    let currentMode = null; // "camera" | "image" | "pdf"
+    let pdfDoc = null;
+    let pdfPageNum = 1;
+    let scale = 1.0;
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    let redactions = []; // { x, y, w, h } in canvas coords
+    let loadedImage = new Image();
+
+    // ====== Utility: Resize canvas to match container ======
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      if (currentMode === 'image' && loadedImage.src) {
+        drawImageOnCanvas(loadedImage);
+      } else if (currentMode === 'pdf' && pdfDoc) {
+        renderPdfPage(pdfPageNum);
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // ====== Camera Handlers ======
+    openCameraBtn.addEventListener('click', async () => {
+      if (stream) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        overlayControls.style.display = 'flex';
+        currentMode = 'camera';
+        resizeCanvas();
+      } catch (err) {
+        alert('Unable to access camera: ' + err.message);
+      }
+    });
+    captureBtn.addEventListener('click', () => {
+      if (!stream) return;
+      const rect = canvas.getBoundingClientRect();
+      ctx.drawImage(video, 0, 0, rect.width, rect.height);
+      stopCamera();
+      currentMode = 'image';
+      loadedImage.src = canvas.toDataURL('image/png');
+      loadedImage.onload = () => {
+        drawImageOnCanvas(loadedImage);
+        saveBtn.disabled = false;
+      };
+    });
+    stopCameraBtn.addEventListener('click', stopCamera);
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+        video.style.display = 'none';
+        overlayControls.style.display = 'none';
+      }
+    }
+
+    // ====== Upload Handlers ======
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileType = file.type;
+      resetCanvas();
+      if (fileType === 'application/pdf') {
+        currentMode = 'pdf';
+        const arrayBuffer = await file.arrayBuffer();
+        await loadAndRenderPdf(arrayBuffer);
+        saveBtn.disabled = false;
+      } else if (fileType.startsWith('image/')) {
+        currentMode = 'image';
+        const url = URL.createObjectURL(file);
+        loadedImage = new Image();
+        loadedImage.src = url;
+        loadedImage.onload = () => {
+          drawImageOnCanvas(loadedImage);
+          saveBtn.disabled = false;
+        };
+      } else {
+        alert('Unsupported file type.');
+      }
+      fileInput.value = '';
+    });
+
+    // ====== PDF Rendering ======
+    async function loadAndRenderPdf(data) {
+      pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+      pdfPageNum = 1;
+      renderPdfPage(pdfPageNum);
+    }
+    function renderPdfPage(num) {
+      pdfDoc.getPage(num).then((page) => {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const vpOriginal = page.getViewport({ scale: 1 });
+        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
+        const viewport = page.getViewport({ scale: ratio });
+        scale = viewport.scale;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        page.render(renderContext).promise.then(() => {
+          drawAllRedactions();
+        });
+      });
+    }
+
+    // ====== Drawing and Redaction ======
+    function resetCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      redactions = [];
+    }
+    function drawImageOnCanvas(img) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      drawAllRedactions();
+    }
+    function drawAllRedactions() {
+      redactions.forEach((r) => {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+      });
+    }
+    canvas.addEventListener('mousedown', (e) => {
+      if (!['image', 'pdf'].includes(currentMode)) return;
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const w = mouseX - startX;
+      const h = mouseY - startY;
+      if (currentMode === 'image') drawImageOnCanvas(loadedImage);
+      else if (currentMode === 'pdf') renderPdfPage(pdfPageNum);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(startX, startY, w, h);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, startY, w, h);
+    });
+    canvas.addEventListener('mouseup', (e) => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      const rect = canvas.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      redactions.push({ x, y, w, h });
+      drawAllRedactions();
+    });
+    canvas.addEventListener('mouseleave', () => {
+      if (isDrawing) isDrawing = false;
+    });
+
+    // ====== Save Redacted File ======
+    saveBtn.addEventListener('click', async () => {
+      if (currentMode === 'image') {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'redacted.png';
+        link.click();
+      } else if (currentMode === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'l' : 'p',
+          unit: 'pt',
+          format: [canvas.width, canvas.height]
+        });
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('redacted.pdf');
+      }
+    });
+
+    // ====== Privacy Modal Handlers ======
+    privacyBtn.addEventListener('click', () => {
+      modalBackdrop.style.display = 'flex';
+    });
+    modalCloseBtn.addEventListener('click', () => {
+      modalBackdrop.style.display = 'none';
+    });
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) {
+        modalBackdrop.style.display = 'none';
+      }
+    });
+
+    // ====== Initialization ======
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      saveBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>
