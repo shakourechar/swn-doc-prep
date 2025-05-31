@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Enable responsive scaling on mobile -->
+  <!-- Responsive scaling and safe‐area for notches -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Redact Tool</title>
+  <title>Redact & Save Tool</title>
 
-  <!-- PDF.js (for PDF preview) -->
+  <!-- PDF.js for PDF rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
-  <!-- jsPDF (for saving as PDF) -->
+  <!-- jsPDF for exporting PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
@@ -24,11 +24,11 @@
       background: #0d0d0f;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #fff;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      overscroll-behavior: none; /* disable pull-to-refresh/overscroll */
+      overflow: hidden;
+      overscroll-behavior: none; /* prevent pull‐to‐refresh */
     }
 
     /* ===== Glassmorphic Container ===== */
@@ -54,8 +54,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     .header h1 {
       font-size: clamp(1.5rem, 5vw, 2rem);
@@ -69,8 +69,8 @@
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.15);
       color: #fff;
-      font-size: 0.9rem;
       cursor: pointer;
+      font-size: 0.9rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .header button:hover {
@@ -94,8 +94,8 @@
       border-radius: 8px;
       background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
       color: #fff;
-      font-size: 0.95rem;
       cursor: pointer;
+      font-size: 0.95rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .controls button:hover {
@@ -103,7 +103,7 @@
       transform: translateY(-2px);
     }
 
-    /* ===== Canvas Area ===== */
+    /* ===== Main Canvas Area ===== */
     .canvas-area {
       flex: 1;
       position: relative;
@@ -112,20 +112,18 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      touch-action: none; /* prevent default gestures on children */
+      touch-action: none; /* prevent default gestures */
     }
-    /* Video sits below the canvas */
     video {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover; 
+      object-fit: cover;
       border-radius: 4px;
       z-index: 1;
     }
-    /* Canvas is on top and interactive */
     canvas {
       position: absolute;
       top: 0;
@@ -135,11 +133,8 @@
       object-fit: contain;
       border-radius: 4px;
       z-index: 2;
-      pointer-events: auto; /* ensure it catches taps/drags */
-    }
-    /* Add a visual cue when pen is active */
-    canvas.pen-active {
-      cursor: crosshair;
+      pointer-events: auto;
+      touch-action: none;
     }
 
     /* ===== Overlay Controls (Camera) ===== */
@@ -150,7 +145,7 @@
       transform: translateX(-50%);
       display: flex;
       gap: 8px;
-      z-index: 3; /* above canvas */
+      z-index: 3;
     }
     .overlay-controls button {
       padding: 6px 10px;
@@ -158,8 +153,8 @@
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.12);
       color: #fff;
-      font-size: 0.85rem;
       cursor: pointer;
+      font-size: 0.85rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .overlay-controls button:hover {
@@ -172,7 +167,7 @@
       display: none;
     }
 
-    /* ===== Modal ===== */
+    /* ===== Modal Styles ===== */
     .modal-backdrop {
       position: fixed;
       top: 0;
@@ -233,6 +228,7 @@
       <h1>Redact & Save</h1>
       <button id="privacyBtn">Privacy Policy</button>
     </div>
+
     <div class="controls">
       <button id="openCameraBtn">Open Camera</button>
       <button id="uploadBtn">Upload File</button>
@@ -240,9 +236,9 @@
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
-      <!-- rear camera via capture="environment" when using file input -->
       <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" />
     </div>
+
     <div class="canvas-area" id="canvasArea">
       <video id="video" autoplay muted playsinline style="display:none;"></video>
       <canvas id="canvas"></canvas>
@@ -295,7 +291,7 @@
     let penStrokes = [];
     let currentStroke = [];
 
-    // ===== Utility: Resize canvas & redraw existing content =====
+    // ===== Utility: Resize Canvas =====
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
@@ -312,12 +308,12 @@
     openCameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
-        // Request exact rear camera first
+        // Try exact rear camera first
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { exact: 'environment' } }
         });
       } catch (err) {
-        // Fallback to ideal 'environment'
+        // Fallback to rear camera if exact fails
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
@@ -336,32 +332,32 @@
         disableActionButtons();
       } else {
         alert(
-          'Unable to access rear camera.\n' +
+          'Unable to access the rear camera.\n' +
           '• Ensure you’re on HTTPS (not file:// or HTTP).\n' +
-          '• If embedded in an iframe, include allow="camera" on the iframe.\n' +
-          '• Close any overlays or “chat bubbles” blocking the prompt.'
+          '• If in an iframe, include allow="camera" on the iframe.\n' +
+          '• Close any overlays (chat bubbles, etc.) blocking the permission prompt.'
         );
       }
     });
+
     captureBtn.addEventListener('click', () => {
       if (!stream) return;
-      // Draw current video frame to canvas
       const rect = canvas.getBoundingClientRect();
       ctx.drawImage(video, 0, 0, rect.width, rect.height);
 
-      // Immediately stop & hide video (prevent interference)
+      // Stop & hide video immediately
       stopCamera();
       video.style.display = 'none';
       video.srcObject = null;
 
       currentMode = 'image';
-      // Store data URL and wait for image to finish loading onto canvas
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
         drawImageOnCanvas(loadedImage);
         enableActionButtons();
       };
     });
+
     stopCameraBtn.addEventListener('click', stopCamera);
     function stopCamera() {
       if (stream) {
@@ -377,7 +373,6 @@
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      console.log('Selected file:', file);
       const fileType = file.type;
       clearCanvas();
       if (fileType === 'application/pdf') {
@@ -434,7 +429,7 @@
       });
     }
 
-    // ===== Drawing & Pen Redaction =====
+    // ===== Drawing & Pen Redaction (Pointer Events) =====
     function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       penStrokes = [];
@@ -479,9 +474,9 @@
       updateUndoResetState();
     }
 
-    // --- Mouse event handlers ---
-    canvas.addEventListener('mousedown', (e) => {
-      if (!['image', 'pdf'].includes(currentMode) || !isPenActive) return;
+    // Pointer event handlers for drawing
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!['image','pdf'].includes(currentMode) || !isPenActive) return;
       isDrawing = true;
       currentStroke = [];
       const rect = canvas.getBoundingClientRect();
@@ -489,13 +484,15 @@
       const y = e.clientY - rect.top;
       currentStroke.push({ x, y });
       e.preventDefault();
-    });
-    canvas.addEventListener('mousemove', (e) => {
+    }, { passive: false });
+
+    canvas.addEventListener('pointermove', (e) => {
       if (!isDrawing || !isPenActive) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       currentStroke.push({ x, y });
+
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#000';
@@ -511,16 +508,20 @@
         ctx.stroke();
       }
       ctx.restore();
+
       e.preventDefault();
-    });
-    canvas.addEventListener('mouseup', () => {
+    }, { passive: false });
+
+    canvas.addEventListener('pointerup', (e) => {
       if (!isDrawing || !isPenActive) return;
       isDrawing = false;
       penStrokes.push(currentStroke);
       currentStroke = [];
       updateUndoResetState();
-    });
-    canvas.addEventListener('mouseleave', () => {
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('pointerleave', () => {
       if (isDrawing && isPenActive) {
         isDrawing = false;
         penStrokes.push(currentStroke);
@@ -529,60 +530,10 @@
       }
     });
 
-    // --- Touch event handlers ---
-    canvas.addEventListener('touchstart', (e) => {
-      if (!['image', 'pdf'].includes(currentMode) || !isPenActive) return;
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      isDrawing = true;
-      currentStroke = [{ x, y }];
-      e.preventDefault();
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', (e) => {
-      if (!isDrawing || !isPenActive) return;
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      currentStroke.push({ x, y });
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 30;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      const lastIdx = currentStroke.length - 1;
-      if (lastIdx > 0) {
-        const prevPt = currentStroke[lastIdx - 1];
-        ctx.moveTo(prevPt.x, prevPt.y);
-        ctx.lineTo(currentStroke[lastIdx].x, currentStroke[lastIdx].y);
-        ctx.stroke();
-      }
-      ctx.restore();
-      e.preventDefault();
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', (e) => {
-      if (!isDrawing || !isPenActive) return;
-      isDrawing = false;
-      penStrokes.push(currentStroke);
-      currentStroke = [];
-      updateUndoResetState();
-      e.preventDefault();
-    }, { passive: false });
-
     penToolBtn.addEventListener('click', () => {
       isPenActive = !isPenActive;
-      if (isPenActive) {
-        penToolBtn.textContent = 'Pen Active (Click to Disable)';
-        canvas.classList.add('pen-active');
-      } else {
-        penToolBtn.textContent = 'Pen Tool';
-        canvas.classList.remove('pen-active');
+      penToolBtn.textContent = isPenActive ? 'Pen Active (Click to Disable)' : 'Pen Tool';
+      if (!isPenActive) {
         isDrawing = false;
       }
     });
