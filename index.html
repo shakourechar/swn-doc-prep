@@ -77,6 +77,7 @@
       justify-content: center;
       background: rgba(255, 255, 255, 0.04);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-wrap: wrap;
     }
     .controls button {
       padding: 10px 18px;
@@ -204,7 +205,7 @@
     <div class="controls">
       <button id="openCameraBtn">Open Camera</button>
       <button id="uploadBtn">Upload File</button>
-      <button id="penToolBtn">Pen Tool</button>
+      <button id="penToolBtn" disabled>Pen Tool</button>
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
       <button id="saveBtn" disabled>Save Redacted</button>
@@ -367,6 +368,8 @@
         page.render(renderContext).promise.then(() => {
           redrawPenStrokes();
           enableActionButtons();
+        }).catch((err) => {
+          console.error('PDF render promise error:', err);
         });
       }).catch((err) => {
         console.error('PDF render error:', err);
@@ -489,6 +492,10 @@
     function updateUndoResetState() {
       undoBtn.disabled = penStrokes.length === 0;
       resetBtn.disabled = penStrokes.length === 0;
+    }
+    function disableUndoReset() {
+      undoBtn.disabled = true;
+      resetBtn.disabled = true;
     }
     function enableActionButtons() {
       saveBtn.disabled = false;
