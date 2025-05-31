@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <!-- Responsive scaling and safe‐area for notches -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Redact & Save Tool</title>
+  <title>Redact Tool</title>
 
   <!-- PDF.js for PDF rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
@@ -45,62 +45,33 @@
       overflow: hidden;
     }
 
-    /* ===== Header (Safe‐area support) ===== */
-    .header {
-      padding-top: env(safe-area-inset-top, 16px);
-      padding-bottom: 12px;
-      padding-left: 20px;
-      padding-right: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.05);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .header h1 {
-      font-size: clamp(1.5rem, 5vw, 2rem);
-      font-weight: 600;
-      color: #e0e0e0;
-      text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
-    }
-    .header button {
-      padding: 6px 12px;
-      border: none;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.15);
-      color: #fff;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.2s ease, transform 0.2s ease;
-    }
-    .header button:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px);
-    }
-
-    /* ===== Controls Row ===== */
+    /* ===== Controls Row (compact) ===== */
     .controls {
-      padding: 12px 16px;
+      padding: 6px 8px;
       display: flex;
-      gap: 10px;
+      gap: 6px;
       justify-content: center;
       background: rgba(255, 255, 255, 0.04);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       flex-wrap: wrap;
     }
     .controls button {
-      padding: 8px 12px;
+      padding: 4px 8px;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
       color: #fff;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
-    .controls button:hover {
+    .controls button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .controls button:hover:not(:disabled) {
       background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
-      transform: translateY(-2px);
+      transform: translateY(-1px);
     }
 
     /* ===== Main Canvas Area ===== */
@@ -140,21 +111,21 @@
     /* ===== Overlay Controls (Camera) ===== */
     .overlay-controls {
       position: absolute;
-      bottom: 16px;
+      bottom: 12px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 8px;
+      gap: 6px;
       z-index: 3;
     }
     .overlay-controls button {
-      padding: 6px 10px;
+      padding: 4px 8px;
       border: none;
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.12);
       color: #fff;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
     .overlay-controls button:hover {
@@ -166,76 +137,19 @@
     #fileInput {
       display: none;
     }
-
-    /* ===== Modal Styles ===== */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-    .modal-content {
-      width: 90%;
-      max-width: 600px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 14px;
-      backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 24px;
-      color: #fff;
-      position: relative;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    }
-    .modal-content h2 {
-      margin-bottom: 10px;
-      font-size: 1.3rem;
-      text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
-    }
-    .modal-content p {
-      margin-bottom: 8px;
-      line-height: 1.5;
-      font-size: 0.95rem;
-      color: #d0d0d0;
-    }
-    .modal-close {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 1rem;
-      padding: 4px 8px;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.2s ease;
-    }
-    .modal-close:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-    }
   </style>
 </head>
 <body>
   <div class="glass-container">
-    <div class="header">
-      <h1>Redact & Save</h1>
-      <button id="privacyBtn">Privacy Policy</button>
-    </div>
-
     <div class="controls">
-      <button id="openCameraBtn">Open Camera</button>
-      <button id="uploadBtn">Upload File</button>
-      <button id="penToolBtn" disabled>Pen Tool</button>
+      <button id="cameraBtn">Camera</button>
+      <button id="uploadBtn">Upload</button>
+      <button id="penToolBtn" disabled>Pen</button>
+      <button id="penPlusBtn" disabled>Pen +</button>
+      <button id="penMinusBtn" disabled>Pen -</button>
       <button id="undoBtn" disabled>Undo</button>
       <button id="resetBtn" disabled>Reset</button>
-      <button id="saveBtn" disabled>Save Redacted</button>
+      <button id="saveBtn" disabled>Save</button>
       <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" />
     </div>
 
@@ -244,40 +158,28 @@
       <canvas id="canvas"></canvas>
       <div class="overlay-controls" id="overlayControls" style="display:none;">
         <button id="captureBtn">Capture</button>
-        <button id="stopCameraBtn">Close Camera</button>
+        <button id="stopCameraBtn">Close</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Privacy Policy Modal -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal-content">
-      <button class="modal-close" id="modalCloseBtn">&times;</button>
-      <h2>Privacy Policy</h2>
-      <p>This redaction tool processes your images and PDF files entirely within your browser. No data, images, or files are ever uploaded to any external server or stored by this application.</p>
-      <p>All redaction actions occur locally on your device. Once you click "Save Redacted," the output file (image or PDF) is generated and downloaded to your device only.</p>
-      <p>We do not collect, retain, or share any user data. All intermediate data is discarded when you close the page or navigate away. By using this tool, you acknowledge that your data remains private and is not retained by the service.</p>
     </div>
   </div>
 
   <script>
     // ===== Global Variables =====
-    const openCameraBtn = document.getElementById('openCameraBtn');
-    const uploadBtn = document.getElementById('uploadBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const uploadBtn  = document.getElementById('uploadBtn');
     const penToolBtn = document.getElementById('penToolBtn');
-    const undoBtn = document.getElementById('undoBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const fileInput = document.getElementById('fileInput');
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    const penPlusBtn = document.getElementById('penPlusBtn');
+    const penMinusBtn= document.getElementById('penMinusBtn');
+    const undoBtn    = document.getElementById('undoBtn');
+    const resetBtn   = document.getElementById('resetBtn');
+    const saveBtn    = document.getElementById('saveBtn');
+    const fileInput  = document.getElementById('fileInput');
+    const video      = document.getElementById('video');
+    const canvas     = document.getElementById('canvas');
+    let ctx          = canvas.getContext('2d');
     const overlayControls = document.getElementById('overlayControls');
-    const captureBtn = document.getElementById('captureBtn');
-    const stopCameraBtn = document.getElementById('stopCameraBtn');
-    const privacyBtn = document.getElementById('privacyBtn');
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const captureBtn     = document.getElementById('captureBtn');
+    const stopCameraBtn  = document.getElementById('stopCameraBtn');
 
     let stream = null;
     let currentMode = null; // "camera" | "image" | "pdf"
@@ -287,9 +189,10 @@
     let pdfPageNum = 1;
     let loadedImage = new Image();
 
-    // Pen strokes: array of paths (each path is array of points)
+    // Pen strokes and brush size
     let penStrokes = [];
     let currentStroke = [];
+    let brushSize = 20; // default smaller size
 
     // ===== Utility: Resize Canvas =====
     function resizeCanvas() {
@@ -303,17 +206,16 @@
       }
     }
     window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     // ===== Camera Handlers =====
-    openCameraBtn.addEventListener('click', async () => {
+    cameraBtn.addEventListener('click', async () => {
       if (stream) return;
       try {
-        // Try exact rear camera first
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { exact: 'environment' } }
         });
-      } catch (err) {
-        // Fallback to rear camera if exact fails
+      } catch {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
@@ -322,7 +224,6 @@
           stream = null;
         }
       }
-
       if (stream) {
         video.srcObject = stream;
         video.style.display = 'block';
@@ -332,10 +233,9 @@
         disableActionButtons();
       } else {
         alert(
-          'Unable to access the rear camera.\n' +
+          'Unable to access rear camera.\n' +
           '• Ensure you’re on HTTPS (not file:// or HTTP).\n' +
-          '• If in an iframe, include allow="camera" on the iframe.\n' +
-          '• Close any overlays (chat bubbles, etc.) blocking the permission prompt.'
+          '• Close any overlays blocking the prompt.'
         );
       }
     });
@@ -344,12 +244,9 @@
       if (!stream) return;
       const rect = canvas.getBoundingClientRect();
       ctx.drawImage(video, 0, 0, rect.width, rect.height);
-
-      // Stop & hide video immediately
       stopCamera();
       video.style.display = 'none';
       video.srcObject = null;
-
       currentMode = 'image';
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
@@ -460,7 +357,7 @@
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 30;
+        ctx.lineWidth = brushSize;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
@@ -496,7 +393,7 @@
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 30;
+      ctx.lineWidth = brushSize;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
@@ -532,10 +429,18 @@
 
     penToolBtn.addEventListener('click', () => {
       isPenActive = !isPenActive;
-      penToolBtn.textContent = isPenActive ? 'Pen Active (Click to Disable)' : 'Pen Tool';
-      if (!isPenActive) {
-        isDrawing = false;
-      }
+      penToolBtn.textContent = isPenActive ? 'Pen ✎' : 'Pen';
+      if (!isPenActive) isDrawing = false;
+    });
+
+    // ===== Brush Size Controls =====
+    penPlusBtn.addEventListener('click', () => {
+      brushSize = Math.min(100, brushSize + 5);
+      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : `Pen`;
+    });
+    penMinusBtn.addEventListener('click', () => {
+      brushSize = Math.max(5, brushSize - 5);
+      penToolBtn.textContent = isPenActive ? `Pen (${brushSize}px)` : `Pen`;
     });
 
     // ===== Undo & Reset =====
@@ -559,11 +464,15 @@
     function enableActionButtons() {
       saveBtn.disabled = false;
       penToolBtn.disabled = false;
+      penPlusBtn.disabled = false;
+      penMinusBtn.disabled = false;
       updateUndoResetState();
     }
     function disableActionButtons() {
       saveBtn.disabled = true;
       penToolBtn.disabled = true;
+      penPlusBtn.disabled = true;
+      penMinusBtn.disabled = true;
       undoBtn.disabled = true;
       resetBtn.disabled = true;
     }
@@ -585,19 +494,6 @@
         const imgData = canvas.toDataURL('image/png');
         pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
         pdf.save('redacted.pdf');
-      }
-    });
-
-    // ===== Privacy Modal Handlers =====
-    privacyBtn.addEventListener('click', () => {
-      modalBackdrop.style.display = 'flex';
-    });
-    modalCloseBtn.addEventListener('click', () => {
-      modalBackdrop.style.display = 'none';
-    });
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) {
-        modalBackdrop.style.display = 'none';
       }
     });
 
