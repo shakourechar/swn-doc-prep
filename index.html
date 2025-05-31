@@ -17,94 +17,96 @@
     html, body {
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      background: #121212;
+      background: #0d0d0f;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #fff;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    /* ----- Glassmorphic Container ----- */
+    /* ----- Fullscreen Glassmorphic Container ----- */
     .glass-container {
       position: relative;
-      width: 90vw;
-      max-width: 800px;
-      height: 90vh;
-      max-height: 600px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(40px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     .header {
-      padding: 16px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
     }
     .header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      color: #fff;
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
     }
     .header button {
-      padding: 6px 12px;
+      padding: 8px 14px;
       border: none;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.15);
       color: #fff;
       cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.2s ease;
+      font-size: 0.95rem;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
     .header button:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
     }
     .controls {
       padding: 16px;
       display: flex;
-      gap: 12px;
+      gap: 14px;
       justify-content: center;
+      background: rgba(255, 255, 255, 0.04);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     .controls button {
-      padding: 10px 16px;
+      padding: 10px 18px;
       border: none;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
+      background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
       color: #fff;
       cursor: pointer;
       font-size: 1rem;
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
     .controls button:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+      transform: translateY(-2px);
     }
     /* ----- Main Canvas Area ----- */
     .canvas-area {
       flex: 1;
       position: relative;
-      background: rgba(0, 0, 0, 0.5);
+      background: #1a1a1c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     canvas, video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
+      border-radius: 4px;
     }
-    /* ----- Controls Overlay ----- */
+    /* ----- Controls Overlay (for camera) ----- */
     .overlay-controls {
       position: absolute;
-      bottom: 16px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -112,17 +114,18 @@
       z-index: 10;
     }
     .overlay-controls button {
-      padding: 8px 12px;
+      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.12);
       color: #fff;
       cursor: pointer;
       font-size: 0.9rem;
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
     .overlay-controls button:hover {
       background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
     }
     /* ----- Hidden File Input ----- */
     #fileInput {
@@ -135,7 +138,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.8);
       display: none;
       align-items: center;
       justify-content: center;
@@ -143,39 +146,43 @@
     }
     .modal-content {
       width: 90%;
-      max-width: 500px;
+      max-width: 600px;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      backdrop-filter: blur(20px);
+      border-radius: 14px;
+      backdrop-filter: blur(30px);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 24px;
+      padding: 28px;
       color: #fff;
       position: relative;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     }
     .modal-content h2 {
-      margin-bottom: 12px;
-      font-size: 1.3rem;
+      margin-bottom: 14px;
+      font-size: 1.5rem;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
     }
     .modal-content p {
-      margin-bottom: 8px;
-      line-height: 1.4;
-      font-size: 0.95rem;
+      margin-bottom: 10px;
+      line-height: 1.5;
+      font-size: 1rem;
+      color: #d0d0d0;
     }
     .modal-close {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 14px;
+      right: 14px;
       background: rgba(255, 255, 255, 0.1);
       border: none;
       border-radius: 6px;
       color: #fff;
-      font-size: 1rem;
-      padding: 4px 8px;
+      font-size: 1.1rem;
+      padding: 6px 10px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
     .modal-close:hover {
       background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
     }
   </style>
 </head>
@@ -188,13 +195,14 @@
     <div class="controls">
       <button id="openCameraBtn">Open Camera</button>
       <button id="uploadBtn">Upload File</button>
+      <button id="penToolBtn">Pen Tool</button>
       <button id="saveBtn" disabled>Save Redacted</button>
       <input type="file" id="fileInput" accept="image/*,application/pdf" />
     </div>
     <div class="canvas-area" id="canvasArea">
       <!-- Video for camera preview -->
-      <video id="video" autoplay muted playsinline style="display:none;"></video>
-      <!-- Canvas for rendering image/PDF and drawing redactions -->
+      <video id="video" autoplay muted playsinline style="display:none; border-radius:4px;"></video>
+      <!-- Canvas for rendering image/PDF and pen redactions -->
       <canvas id="canvas"></canvas>
       <!-- Overlay controls (e.g., Capture button) -->
       <div class="overlay-controls" id="overlayControls" style="display:none;">
@@ -209,9 +217,9 @@
     <div class="modal-content">
       <button class="modal-close" id="modalCloseBtn">&times;</button>
       <h2>Privacy Policy</h2>
-      <p>This redaction tool processes images and PDF files entirely within your web browser. No data, images, or files are uploaded to any external server or stored by this application. All redaction actions occur locally on your device.</p>
-      <p>Once you click "Save Redacted," the output file (image or PDF) is generated and downloaded to your device only. We do not collect, store, or share any user data, and all intermediate data is discarded when you close the page or navigate away.</p>
-      <p>By using this tool, you acknowledge that your data remains private and is not retained by the service.</p>
+      <p>This redaction tool processes your images and PDF files entirely within your browser. No data, images, or files are ever uploaded to any external server or stored by this application.</p>
+      <p>All redaction actions occur locally on your device. Once you click "Save Redacted," the output file (image or PDF) is generated and downloaded to your device only.</p>
+      <p>We do not collect, retain, or share any user data. All intermediate data is discarded when you close the page or navigate away. By using this tool, you acknowledge that your data remains private and is not retained by the service.</p>
     </div>
   </div>
 
@@ -219,6 +227,7 @@
     // ====== Global Variables ======
     const openCameraBtn = document.getElementById('openCameraBtn');
     const uploadBtn = document.getElementById('uploadBtn');
+    const penToolBtn = document.getElementById('penToolBtn');
     const saveBtn = document.getElementById('saveBtn');
     const fileInput = document.getElementById('fileInput');
     const video = document.getElementById('video');
@@ -233,15 +242,15 @@
 
     let stream = null;
     let currentMode = null; // "camera" | "image" | "pdf"
+    let isPenActive = false;
+    let isDrawing = false;
     let pdfDoc = null;
     let pdfPageNum = 1;
     let scale = 1.0;
-    let isDrawing = false;
-    let startX = 0, startY = 0;
-    let redactions = []; // { x, y, w, h } in canvas coords
+    let lastX = 0, lastY = 0;
     let loadedImage = new Image();
 
-    // ====== Utility: Resize canvas to match container ======
+    // ====== Resize canvas ======
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
@@ -296,7 +305,7 @@
       const file = e.target.files[0];
       if (!file) return;
       const fileType = file.type;
-      resetCanvas();
+      clearCanvas();
       if (fileType === 'application/pdf') {
         currentMode = 'pdf';
         const arrayBuffer = await file.arrayBuffer();
@@ -326,8 +335,8 @@
     function renderPdfPage(num) {
       pdfDoc.getPage(num).then((page) => {
         const rect = canvas.parentElement.getBoundingClientRect();
-        const vpOriginal = page.getViewport({ scale: 1 });
-        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
+        const vp = page.getViewport({ scale: 1 });
+        const ratio = Math.min(rect.width / vp.width, rect.height / vp.height);
         const viewport = page.getViewport({ scale: ratio });
         scale = viewport.scale;
         canvas.width = viewport.width;
@@ -337,76 +346,107 @@
           viewport: viewport
         };
         page.render(renderContext).promise.then(() => {
-          drawAllRedactions();
+          redrawPenStrokes();
         });
       });
     }
 
-    // ====== Drawing and Redaction ======
-    function resetCanvas() {
+    // ====== Drawing and Pen Redaction ======
+    function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      redactions = [];
+      penStrokes = [];
     }
     function drawImageOnCanvas(img) {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
       ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      drawAllRedactions();
+      redrawPenStrokes();
     }
-    function drawAllRedactions() {
-      redactions.forEach((r) => {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(r.x, r.y, r.w, r.h);
+
+    // Pen strokes stored as array of paths (each path is array of points)
+    let penStrokes = [];
+    let currentStroke = [];
+
+    function redrawPenStrokes() {
+      penStrokes.forEach((stroke) => {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 30;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        stroke.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+        ctx.restore();
       });
     }
+
     canvas.addEventListener('mousedown', (e) => {
-      if (!['image', 'pdf'].includes(currentMode)) return;
+      if (!['image', 'pdf'].includes(currentMode) || !isPenActive) return;
       isDrawing = true;
+      currentStroke = [];
       const rect = canvas.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      currentStroke.push({ x, y });
     });
     canvas.addEventListener('mousemove', (e) => {
-      if (!isDrawing) return;
+      if (!isDrawing || !isPenActive) return;
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const w = mouseX - startX;
-      const h = mouseY - startY;
-      if (currentMode === 'image') drawImageOnCanvas(loadedImage);
-      else if (currentMode === 'pdf') renderPdfPage(pdfPageNum);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(startX, startY, w, h);
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(startX, startY, w, h);
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      currentStroke.push({ x, y });
+      // Draw the latest segment
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 30;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const lastIdx = currentStroke.length - 1;
+      if (lastIdx > 0) {
+        const prevPt = currentStroke[lastIdx - 1];
+        ctx.moveTo(prevPt.x, prevPt.y);
+        ctx.lineTo(currentStroke[lastIdx].x, currentStroke[lastIdx].y);
+        ctx.stroke();
+      }
+      ctx.restore();
     });
-    canvas.addEventListener('mouseup', (e) => {
-      if (!isDrawing) return;
+    canvas.addEventListener('mouseup', () => {
+      if (!isDrawing || !isPenActive) return;
       isDrawing = false;
-      const rect = canvas.getBoundingClientRect();
-      const endX = e.clientX - rect.left;
-      const endY = e.clientY - rect.top;
-      const x = Math.min(startX, endX);
-      const y = Math.min(startY, endY);
-      const w = Math.abs(endX - startX);
-      const h = Math.abs(endY - startY);
-      redactions.push({ x, y, w, h });
-      drawAllRedactions();
+      penStrokes.push(currentStroke);
     });
     canvas.addEventListener('mouseleave', () => {
-      if (isDrawing) isDrawing = false;
+      if (isDrawing && isPenActive) {
+        isDrawing = false;
+        penStrokes.push(currentStroke);
+      }
+    });
+
+    penToolBtn.addEventListener('click', () => {
+      isPenActive = !isPenActive;
+      penToolBtn.textContent = isPenActive ? 'Pen Active (Click to Disable)' : 'Pen Tool';
+      penToolBtn.style.background = isPenActive 
+        ? 'linear-gradient(145deg, rgba(200,0,0,0.4), rgba(200,0,0,0.2))'
+        : 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0))';
     });
 
     // ====== Save Redacted File ======
     saveBtn.addEventListener('click', async () => {
-      if (currentMode === 'image') {
+      if (currentMode === 'image' || currentMode === 'camera') {
         const link = document.createElement('a');
         link.href = canvas.toDataURL('image/png');
         link.download = 'redacted.png';
         link.click();
       } else if (currentMode === 'pdf') {
+        // Create new PDF with flattened redactions
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'l' : 'p',
@@ -437,6 +477,33 @@
       resizeCanvas();
       saveBtn.disabled = true;
     });
+
+    // ====== After each render or load, allow saving and pen usage ======
+    function enableActions() {
+      saveBtn.disabled = false;
+      penToolBtn.disabled = false;
+    }
+    // Modify points where rendering finishes
+    loadedImage.onload = () => { resizeCanvas(); enableActions(); };
+    function renderPdfPage(num) {
+      pdfDoc.getPage(num).then((page) => {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const vpOriginal = page.getViewport({ scale: 1 });
+        const ratio = Math.min(rect.width / vpOriginal.width, rect.height / vpOriginal.height);
+        const viewport = page.getViewport({ scale: ratio });
+        scale = viewport.scale;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        page.render(renderContext).promise.then(() => {
+          redrawPenStrokes();
+          enableActions();
+        });
+      });
+    }
   </script>
 </body>
 </html>
