@@ -101,7 +101,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      /* canvas internal size is set via width/height attributes */
       border-radius: 4px;
       z-index: 2;
       pointer-events: auto;
@@ -194,16 +194,13 @@
     let currentStroke = [];
     let brushSize     = 20; // default
 
-    // ===== Utility: Resize Canvas =====
+    // ===== Utility: Resize Canvas to Match Its CSS Display Size =====
     function resizeCanvas() {
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width  = rect.width;
-      canvas.height = rect.height;
-      if (currentMode === 'image' && loadedImage.src) {
-        drawImageOnCanvas(loadedImage);
-      } else if (currentMode === 'pdf' && pdfDoc) {
-        renderPdfPage(pdfPageNum);
-      }
+      // We do NOT change canvas.width/height attributes here
+      // because those represent its internal drawing resolution.
+      // Instead, we only keep track of CSS size for coordinate scaling.
+      // Canvas actual resolution is set on capture or when loading PDF/image.
+      // No action needed here.
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -238,7 +235,6 @@
         video.style.display = 'block';
         overlayControls.style.display = 'flex';
         currentMode = 'camera';
-        resizeCanvas();
         disableActionButtons();
       } else {
         alert(
@@ -254,20 +250,21 @@
       // Use camera’s native resolution
       const vw = video.videoWidth;
       const vh = video.videoHeight;
-      // Resize canvas to full camera resolution
+      // Resize canvas’s internal drawing buffer to full camera resolution
       canvas.width  = vw;
       canvas.height = vh;
-      // Draw full‐res frame
+      // Draw the full‐res frame
       ctx.drawImage(video, 0, 0, vw, vh);
       // Stop & hide video
       stopCamera();
       video.style.display = 'none';
-      video.srcObject = null;
-      // Store high‐res PNG, then scale down via CSS
+      video.srcObject     = null;
+      // Now loadedImage contains that high‐res data
       currentMode = 'image';
       loadedImage.src = canvas.toDataURL('image/png');
       loadedImage.onload = () => {
-        drawImageOnCanvas(loadedImage);
+        // After loaded, draw scaled down to fit viewport
+        drawImageScaled(loadedImage);
         enableActionButtons();
       };
     });
@@ -299,7 +296,12 @@
         loadedImage = new Image();
         loadedImage.src = url;
         loadedImage.onload = () => {
-          drawImageOnCanvas(loadedImage);
+          // Use the image’s natural size for drawing buffer
+          canvas.width  = loadedImage.naturalWidth;
+          canvas.height = loadedImage.naturalHeight;
+          ctx.drawImage(loadedImage, 0, 0);
+          // Then scale to fit viewport
+          drawImageScaled(loadedImage);
           enableActionButtons();
         };
       } else {
@@ -321,19 +323,21 @@
     }
     function renderPdfPage(num) {
       pdfDoc.getPage(num).then((page) => {
-        const rect   = canvas.parentElement.getBoundingClientRect();
-        const vpOrig = page.getViewport({ scale: 1 });
-        const ratio  = Math.min(rect.width / vpOrig.width, rect.height / vpOrig.height);
-        const viewport = page.getViewport({ scale: ratio });
-        canvas.width  = viewport.width;
-        canvas.height = viewport.height;
-
+        // Render at natural page size, then scale
+        const viewportOrig = page.getViewport({ scale: 1 });
+        const pageWidth  = viewportOrig.width;
+        const pageHeight = viewportOrig.height;
+        // Set canvas buffer to natural PDF page size
+        canvas.width  = pageWidth;
+        canvas.height = pageHeight;
+        // Render onto canvas buffer
         const renderContext = {
           canvasContext: ctx,
-          viewport: viewport
+          viewport: viewportOrig
         };
         page.render(renderContext).promise.then(() => {
-          redrawPenStrokes();
+          // Once rendered, scale down to fit viewport
+          drawPdfScaled(pageWidth, pageHeight);
           enableActionButtons();
         }).catch((err) => {
           console.error('PDF render promise error:', err);
@@ -343,33 +347,59 @@
       });
     }
 
+    // ===== Scaling Helpers =====
+    function drawImageScaled(img) {
+      // Keep buffer at img.naturalWidth/naturalHeight; 
+      // draw scaled to fill CSS viewport.
+      const rect = canvas.parentElement.getBoundingClientRect();
+      // Temporarily clear CSS size (not needed, CSS 100% covers)
+      // Draw buffer->CSS by using drawImage with dest as CSS dims
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height, 0, 0, rect.width, rect.height);
+      // Now, set CSS size explicitly and keep buffer as is
+      canvas.style.width  = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+    }
+    function drawPdfScaled(pageWidth, pageHeight) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      ctx.clearRect(0, 0, pageWidth, pageHeight);
+      ctx.drawImage(canvas, 0, 0, pageWidth, pageHeight, 0, 0, rect.width, rect.height);
+      canvas.style.width  = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+    }
+
     // ===== Drawing & Pen Redaction (Pointer Events) =====
     function clearCanvas() {
+      // Clear buffer
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Reset CSS size to fill parent
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.style.width  = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
       penStrokes    = [];
       currentStroke = [];
-      redrawBase();
       disableUndoReset();
     }
-    function drawImageOnCanvas(img) {
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width  = rect.width;
-      canvas.height = rect.height;
-      ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      redrawPenStrokes();
-      enableActionButtons();
-    }
+
     function redrawBase() {
       if (currentMode === 'image' && loadedImage.src) {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width  = rect.width;
-        canvas.height = rect.height;
-        ctx.drawImage(loadedImage, 0, 0, rect.width, rect.height);
+        // Buffer & CSS already set by drawImageScaled
+        // Just redraw the buffer->CSS
+        drawImageScaled(loadedImage);
       } else if (currentMode === 'pdf' && pdfDoc) {
+        // Re-render current PDF page
         renderPdfPage(pdfPageNum);
       }
     }
+
     function redrawPenStrokes() {
+      // Draw each stroke onto the buffer, then scale to CSS
+      const rect = canvas.parentElement.getBoundingClientRect();
+      // Clear CSS display
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Re-draw base buffer into itself to preserve original
+      // (Assumes buffer already holds the base image/PDF)
+      // Then overlay strokes:
       penStrokes.forEach((stroke) => {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
@@ -385,6 +415,10 @@
         ctx.stroke();
         ctx.restore();
       });
+      // Finally, scale buffer->CSS
+      ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, rect.width, rect.height);
+      canvas.style.width  = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
       updateUndoResetState();
     }
 
@@ -410,6 +444,7 @@
       const y = (e.clientY - rect.top)  * scaleY;
       currentStroke.push({ x, y });
 
+      // Draw onto buffer
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#000';
@@ -519,7 +554,7 @@
 
     // ===== Initialization =====
     window.addEventListener('load', () => {
-      resizeCanvas();
+      clearCanvas();
       disableActionButtons();
     });
   </script>
