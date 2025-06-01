@@ -165,18 +165,18 @@
 
   <script>
     // ===== Global Variables =====
-    const cameraBtn   = document.getElementById('cameraBtn');
-    const uploadBtn   = document.getElementById('uploadBtn');
-    const penToolBtn  = document.getElementById('penToolBtn');
-    const penPlusBtn  = document.getElementById('penPlusBtn');
-    const penMinusBtn = document.getElementById('penMinusBtn');
-    const undoBtn     = document.getElementById('undoBtn');
-    const resetBtn    = document.getElementById('resetBtn');
-    const saveBtn     = document.getElementById('saveBtn');
-    const fileInput   = document.getElementById('fileInput');
-    const video       = document.getElementById('video');
-    const canvas      = document.getElementById('canvas');
-    let ctx           = canvas.getContext('2d');
+    const cameraBtn     = document.getElementById('cameraBtn');
+    const uploadBtn     = document.getElementById('uploadBtn');
+    const penToolBtn    = document.getElementById('penToolBtn');
+    const penPlusBtn    = document.getElementById('penPlusBtn');
+    const penMinusBtn   = document.getElementById('penMinusBtn');
+    const undoBtn       = document.getElementById('undoBtn');
+    const resetBtn      = document.getElementById('resetBtn');
+    const saveBtn       = document.getElementById('saveBtn');
+    const fileInput     = document.getElementById('fileInput');
+    const video         = document.getElementById('video');
+    const canvas        = document.getElementById('canvas');
+    let ctx             = canvas.getContext('2d');
     const overlayControls = document.getElementById('overlayControls');
     const captureBtn      = document.getElementById('captureBtn');
     const stopCameraBtn   = document.getElementById('stopCameraBtn');
@@ -190,9 +190,9 @@
     let loadedImage  = new Image();
 
     // Pen strokes and brush size
-    let penStrokes     = [];
-    let currentStroke  = [];
-    let brushSize      = 20; // default
+    let penStrokes    = [];
+    let currentStroke = [];
+    let brushSize     = 20; // default
 
     // ===== Utility: Resize Canvas =====
     function resizeCanvas() {
@@ -321,7 +321,7 @@
     }
     function renderPdfPage(num) {
       pdfDoc.getPage(num).then((page) => {
-        const rect = canvas.parentElement.getBoundingClientRect();
+        const rect   = canvas.parentElement.getBoundingClientRect();
         const vpOrig = page.getViewport({ scale: 1 });
         const ratio  = Math.min(rect.width / vpOrig.width, rect.height / vpOrig.height);
         const viewport = page.getViewport({ scale: ratio });
@@ -346,7 +346,7 @@
     // ===== Drawing & Pen Redaction (Pointer Events) =====
     function clearCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      penStrokes = [];
+      penStrokes    = [];
       currentStroke = [];
       redrawBase();
       disableUndoReset();
@@ -374,9 +374,9 @@
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = brushSize;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        ctx.lineWidth   = brushSize;
+        ctx.lineCap     = 'round';
+        ctx.lineJoin    = 'round';
         ctx.beginPath();
         stroke.forEach((pt, idx) => {
           if (idx === 0) ctx.moveTo(pt.x, pt.y);
@@ -388,31 +388,34 @@
       updateUndoResetState();
     }
 
-    // Pointer event handlers for drawing
+    // Pointer event handlers (with coordinate scaling)
     canvas.addEventListener('pointerdown', (e) => {
       if (!['image','pdf'].includes(currentMode) || !isPenActive) return;
-      isDrawing = true;
-      currentStroke = [];
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      currentStroke.push({ x, y });
+      const scaleX = canvas.width  / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top)  * scaleY;
+      isDrawing     = true;
+      currentStroke = [{ x, y }];
       e.preventDefault();
     }, { passive: false });
 
     canvas.addEventListener('pointermove', (e) => {
       if (!isDrawing || !isPenActive) return;
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const scaleX = canvas.width  / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top)  * scaleY;
       currentStroke.push({ x, y });
 
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = brushSize;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineWidth   = brushSize;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
       ctx.beginPath();
       const lastIdx = currentStroke.length - 1;
       if (lastIdx > 0) {
@@ -471,11 +474,11 @@
       clearCanvas();
     });
     function updateUndoResetState() {
-      undoBtn.disabled = penStrokes.length === 0;
+      undoBtn.disabled  = penStrokes.length === 0;
       resetBtn.disabled = penStrokes.length === 0;
     }
     function disableUndoReset() {
-      undoBtn.disabled = true;
+      undoBtn.disabled  = true;
       resetBtn.disabled = true;
     }
     function enableActionButtons() {
